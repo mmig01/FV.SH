@@ -1,0 +1,1 @@
+print ("복호화 결과: \n", np.poly1d(pt))
