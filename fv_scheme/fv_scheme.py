@@ -1,10 +1,10 @@
 import math
+import time
 import numpy as np
-from parameters.parameter_generator import ParamGenerator
 from parameters.polynomial_ring import PolynomialRing
 
 
-class FV_SH(PolynomialRing, ParamGenerator):
+class FV_SH(PolynomialRing):
     def __init__(self, degree , pt_modulus, ct_modulus):
         """
         n : cyclotomic poly 차수 (f(x) = x^n + 1)
@@ -22,8 +22,7 @@ class FV_SH(PolynomialRing, ParamGenerator):
         self.ring_t = PolynomialRing(degree=degree, modulus=pt_modulus)
         self.ring_q = PolynomialRing(degree=degree, modulus=ct_modulus)
         self.delta = math.floor(ct_modulus / pt_modulus)
-        self.param_generator = ParamGenerator(degree=degree, pt_modulus=pt_modulus, ct_modulus=ct_modulus)
-        self.secret_key = self.param_generator._generate_small_error()
+        self.secret_key = self.ring_q._generate_small_error()
     
     def generate_public_key(self):
         """
@@ -31,8 +30,8 @@ class FV_SH(PolynomialRing, ParamGenerator):
         pk = [p0, p1] = [-a·s + e mod q , a] 을 반환
         """
         s = self.secret_key
-        a = self.param_generator._generate_polynomial()
-        e = self.param_generator._generate_polynomial_from_chi()
+        a = self.ring_q._generate_polynomial()
+        e = self.ring_q._generate_polynomial_from_chi()
         
         """
         p0 = -a·s + e mod q, p1 = a
@@ -45,6 +44,72 @@ class FV_SH(PolynomialRing, ParamGenerator):
 
         return [p0_negative_mod_q, p1]
     
+    def generate_relinearisation_version1_key(self, T):
+        """
+        version 1 재선형화 키 생성
+        rlk = [-a·s + e + T^i·s mod q , a]
+        """
+        # 재선형화 키 개수
+        length = math.floor(math.log(self.q, T))
+        s = self.secret_key
+
+        rlk = []
+
+        # length 개의 재선형화 키 생성
+        for i in range(0, length + 1):
+            a = self.ring_q._generate_polynomial()
+            e = self.ring_q._generate_polynomial_from_chi()
+
+            rlk0 = self.ring_q._ring_add(self.ring_q._ring_multiply(a, s), e)
+            rlk0_negative = [-coef for coef in rlk0]
+            
+            # T^i·s^2 계산
+            s_square = self.ring_q._ring_multiply(s, s)
+            T_pow_i_mul_s_square = [coef * pow(T, i) for coef in s_square]
+            # -a·s + e + T^i·s^2 계산
+            rlk0_negative_add_T_pow_i_mul_s_square = self.ring_q._ring_add(rlk0_negative, T_pow_i_mul_s_square)
+            # mod q 적용
+            rlk0_negative_add_T_pow_i_mul_s_square_mod_q = self.ring_q._centered_mod_list(rlk0_negative_add_T_pow_i_mul_s_square)
+
+            rlk1 = a
+            rlk.append([rlk0_negative_add_T_pow_i_mul_s_square_mod_q, rlk1])
+
+        return rlk
+
+    def generate_relinearisation_version2_key(self, p):
+        """
+        version 2 재선형화 키 생성
+        rlk = [-a·s + e + p·s^2 mod pq , a]
+        """
+        ring_pq = PolynomialRing(degree=self.n, modulus= p * self.q)
+
+        s = self.secret_key
+    
+        # pq Ring 에서 다항식을 생성
+        a = ring_pq._generate_polynomial()
+        
+        # 에러 추출 분포는 보안성을 위해 수정 필요
+        e = ring_pq._generate_polynomial_from_chi()
+        
+        rlk0 = ring_pq._ring_add(ring_pq._ring_multiply(a, s), e)
+    
+        rlk0_negative = [-coef for coef in rlk0]
+        
+        # p·s^2 계산
+        s_square = ring_pq._ring_multiply(s, s)
+
+        p_mul_s_square = [coef * p for coef in s_square]
+        # -a·s + e + p·s^2 계산 (ring pq 에서 계산!)
+        rlk0_negative_add_p_mul_s_square = ring_pq._ring_add(rlk0_negative, p_mul_s_square)
+        # mod pq 적용
+        rlk0_negative_add_p_mul_s_square_mod_pq = ring_pq._centered_mod_list(rlk0_negative_add_p_mul_s_square)
+
+        rlk1 = a
+
+        rlk = [rlk0_negative_add_p_mul_s_square_mod_pq, rlk1]
+
+        return rlk
+
     def encrypt(self, pk, m):
         """
         암호화
@@ -53,16 +118,15 @@ class FV_SH(PolynomialRing, ParamGenerator):
         p0 = pk[0]
         p1 = pk[1]
 
-        u = self.param_generator._generate_small_error()
+        u = self.ring_q._generate_small_error()
 
-        e1 = self.param_generator._generate_polynomial_from_chi()
-        e2 = self.param_generator._generate_polynomial_from_chi()
+        e1 = self.ring_q._generate_polynomial_from_chi()
+        e2 = self.ring_q._generate_polynomial_from_chi()
 
         """
         ∆·m 부분
         """
         delta_mul_m = [coef * self.delta for coef in m]
-
         """
         c0 = p0·u + e1 + ∆·m mod q, c1 = p1·u + e2 mod q
         """
@@ -100,8 +164,10 @@ class FV_SH(PolynomialRing, ParamGenerator):
         """
         t/q · [c0 + c1·s] mod q = m + some error + r·t
         """
-        pt = [round(coef * self.t / self.q) for coef in c0_cls_mod_q]
 
+        # 각 계수에 t/q 를 곱하고 버림 연산
+        pt = [round(coef * self.t / self.q) for coef in c0_cls_mod_q]
+       
         pt_mod_t = self.ring_t._centered_mod_list(pt)
         return pt_mod_t
     
@@ -123,9 +189,46 @@ class FV_SH(PolynomialRing, ParamGenerator):
         ct = [c0_mod_q, c1_mod_q]
         return ct
     
-    def multiply(self, ct1, ct2, rlk):
+    def multiply_use_rlk_ver1(self, ct1, ct2, T, rlk):
         """
-        암호문 곱셈
+        재선형화 버전 1을 이용한 암호문 곱셈
+        mod q 가 없는 상태에서 곱셈 후 마지막에 mod q 적용
+        """
+
+        """
+        FV.SH.Multiply(ct1, ct2) : compute
+        c0 = round(t/q · ct1[0] · ct2[0]) mod q
+        c1 = round{t/q · (ct1[0] · ct2[1] + ct1[1] · ct2[0])} mod q
+        c2 = round(t/q · ct1[1] · ct2[1]) mod q
+        """
+        # 시간 측정
+        start_t = time.time()
+        
+        c0 = self.ring_q._ring_multiply(ct1[0], ct2[0])
+        c0 = [coef * (self.t / self.q) for coef in c0]
+        c0 = [round(coef) for coef in c0]
+
+        c1 = self.ring_q._ring_add(self.ring_q._ring_multiply(ct1[0], ct2[1]), self.ring_q._ring_multiply(ct1[1], ct2[0]))
+        c1 = [coef * (self.t / self.q) for coef in c1]
+        c1 = [round(coef) for coef in c1]
+
+        c2 = self.ring_q._ring_multiply(ct1[1], ct2[1])
+        c2 = [coef * (self.t / self.q) for coef in c2]
+        c2 = [round(coef) for coef in c2]
+
+        """
+        재선형화 버전 1
+        """
+        c0_prime_mod_q, c1_prime_mod_q = self.relinearisation_ver1(multiplied_ct=[c0, c1, c2], T=T, rlk=rlk)
+
+        # 시간 측정
+        end_t = time.time()
+        print("재선형화 1 time: ", end_t - start_t)
+        return [c0_prime_mod_q, c1_prime_mod_q]
+    
+    def multiply_use_rlk_ver2(self, ct1, ct2, p, rlk):
+        """
+        재선형화 버전 2를 이용한 암호문 곱셈
         mod q 가 없는 상태에서 곱셈 후 마지막에 mod q 적용
         """
 
@@ -136,19 +239,123 @@ class FV_SH(PolynomialRing, ParamGenerator):
         c2 = round(t/q · ct1[1] · ct2[1]) mod q
         """
 
+        # 시간 측정
+        start_t = time.time()
+
         c0 = self.ring_q._ring_multiply(ct1[0], ct2[0])
         c0 = [coef * (self.t / self.q) for coef in c0]
         c0 = [round(coef) for coef in c0]
-        c0_mod_q = self.ring_q._centered_mod_list(c0)
 
         c1 = self.ring_q._ring_add(self.ring_q._ring_multiply(ct1[0], ct2[1]), self.ring_q._ring_multiply(ct1[1], ct2[0]))
         c1 = [coef * (self.t / self.q) for coef in c1]
         c1 = [round(coef) for coef in c1]
-        c1_mod_q = self.ring_q._centered_mod_list(c1)
 
         c2 = self.ring_q._ring_multiply(ct1[1], ct2[1])
         c2 = [coef * (self.t / self.q) for coef in c2]
         c2 = [round(coef) for coef in c2]
-        c2_mod_q = self.ring_q._centered_mod_list(c2)
+
+        """
+        재선형화 버전 2
+        mod q 가 아닌 mod pq 에서 계산
+        """
+        c0_prime_mod_q, c1_prime_mod_q = self.relinearisation_ver2(multiplied_ct=[c0, c1, c2], p=p, rlk=rlk)
+
+        # 시간 측정
+        end_t = time.time()
+        print("재선형화 2 time: ", end_t - start_t)
+        return [c0_prime_mod_q, c1_prime_mod_q]
+    
+    def relinearisation_ver1(self, multiplied_ct, T, rlk):
+        """
+        relinearisation version 1
+        """
+        c0 = multiplied_ct[0]
+        c1 = multiplied_ct[1]
+        c2 = multiplied_ct[2]
+
+        # 기저 T 를 이용하여 c2 를 분해
+        c2_split = self.split_polynomial_by_T(c2 = c2, T = T)
+
+        c0_prime = []
+        c1_prime = []
         
-        return [c0_mod_q, c1_mod_q, c2_mod_q]
+        # length 개의 재선형화 키에 대해 계산
+        for i in range(len(c2_split)):
+            c0_prime = self.ring_q._ring_add(c0_prime, self.ring_q._ring_multiply(rlk[i][0], c2_split[i]))
+            c1_prime = self.ring_q._ring_add(c1_prime, self.ring_q._ring_multiply(rlk[i][1], c2_split[i])) 
+        
+        c0_prime = self.ring_q._ring_add(c0_prime, c0)
+        c0_prime_mod_q = self.ring_q._centered_mod_list(c0_prime)
+        c1_prime = self.ring_q._ring_add(c1_prime, c1)
+        c1_prime_mod_q = self.ring_q._centered_mod_list(c1_prime)
+        
+        return [c0_prime_mod_q, c1_prime_mod_q]
+    
+    def split_polynomial_by_T(self, c2, T):
+        """
+        다항식의 각 계수를 기저 T 로 분해하여 L 개의 다항식 리스트를 생성
+        (출력 시 높은 차수부터 낮은 차수 순서로 유지)
+        
+        :param c2: 다항식의 계수 리스트 (높은 차수부터 낮은 차수 순서)
+        :param T: 기저(base)
+        :param q: 암호문 모듈러스
+        :return: L 개의 다항식 리스트 (높은 자리부터 낮은 자리 순서)
+        """
+        # length 계산 (기저 T 로 표현했을 때 최대 자리 수)
+        length = math.floor(math.log(self.q, T))
+
+        # length 개의 다항식 초기화 (모든 항이 0인 다항식)
+        poly_list = [np.zeros(len(c2), dtype=int) for _ in range(length + 1)]
+
+        """
+        3x^2 + 4x + 5 = [3, 4, 5] 이고 T = 2 일 때
+        poly_list[][0] = [1, 0, 0] ( * 2^0)   +
+        poly_list[][1] = [1, 0, 1] ( * 2^1)   +
+        poly_list[][2] = [0, 1, 1] ( * 2^2)   +
+        poly_list[][3] = [0, 0, 0] ( * 2^3)   =
+        ----------------------------------------
+                        [3, 4, 5]
+        ...
+        과 같이 변환
+        """
+        # 각 계수를 기저 T로 변환하여 자리별로 배치
+        for i, coeff in enumerate(c2):  # 다항식의 각 계수에 대해 반복
+            num = coeff
+            for j in range(length + 1):  # L 개의 다항식 생성
+                poly_list[j][i] = num % T  
+                num //= T  # 다음 자리 계산
+
+        return [poly.tolist() for poly in poly_list]  # 리스트 형태로 반환
+    
+    def relinearisation_ver2(self, multiplied_ct, p, rlk):
+        """
+        relinearisation version 2
+        mod q 가 아닌 mod pq 에서 계산
+        """
+        ring_pq = PolynomialRing(degree=self.n, modulus= p * self.q)
+
+        c0 = multiplied_ct[0]
+        c1 = multiplied_ct[1]
+        c2 = multiplied_ct[2]
+
+        c2_mul_rlk0 = ring_pq._ring_multiply(c2, rlk[0])
+        # c0' = c0 + c2·rlk[0] / p 후 계수 반올림
+        c0_prime = [round(coef/p) for coef in c2_mul_rlk0]
+        # 이 때 c0_prime 은 mod pq 가 아닌 mod q 에서 연산
+        c0_prime_mod_q = self.ring_q._centered_mod_list(c0_prime)
+
+        c2_mul_rlk1 = ring_pq._ring_multiply(c2, rlk[1])
+        # c1' = c1 + c2·rlk[1] / p 후 계수 반올림
+        c1_prime = [round(coef/p) for coef in c2_mul_rlk1]
+        # 이 때 c1_prime 은 mod pq 가 아닌 mod q 에서 연산
+        c1_prime_mod_q = self.ring_q._centered_mod_list(c1_prime)
+
+        c0_prime_mod_q_add_c0 = self.ring_q._ring_add(c0_prime_mod_q, c0)
+        # c0 를 더한 후 한번 더 mod q 적용
+        c0_prime_mod_q_add_c0 = self.ring_q._centered_mod_list(c0_prime_mod_q_add_c0)
+
+        c1_prime_mod_q_add_c1 = self.ring_q._ring_add(c1_prime_mod_q, c1)
+        # c1 를 더한 후 한번 더 mod q 적용
+        c1_prime_mod_q_add_c1 = self.ring_q._centered_mod_list(c1_prime_mod_q_add_c1)
+        
+        return [c0_prime_mod_q_add_c0, c1_prime_mod_q_add_c1]
