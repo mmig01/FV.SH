@@ -5,9 +5,9 @@ from parameters.polynomial_ring import PolynomialRing
 
 # cyclotomic 다항식의 차수
 # f(x) = x^n + 1
-n = pow(2, 1)
+n = pow(2, 10)
 # 평문, 암호문 모듈러스
-q = pow(2 ,40)
+q = pow(2 ,70)
 t = 10000
 delta = math.floor(q / t)
 
@@ -21,24 +21,29 @@ s = fv.secret_key
 pk = fv.generate_public_key()
 ct1 = fv.encrypt(pk = pk ,m = [140])
 pt1 = fv.decrypt(ct = ct1)
-print ("복호화 결과: \n", np.poly1d(pt1))
+print ("복호화 결과: \n", np.poly1d(pt1[::-1]))
 
 ct2 = fv.encrypt(pk = pk ,m = [20])
 pt2 = fv.decrypt(ct = ct2)
-print ("복호화 결과: \n", np.poly1d(pt2))
+print ("복호화 결과: \n", np.poly1d(pt2[::-1]))
+
+# 덧셈
+add = fv.add(ct1, ct2)
+dec = fv.decrypt(add)
+print("덧셈 복호화 : ", np.poly1d(dec[::-1]))
 
 T = 2
 
 rlk = fv.generate_relinearisation_version1_key(T=T)
 mul = fv.multiply_use_rlk_ver1(ct1=ct1, ct2=ct2, T=T, rlk=rlk)
 dec = fv.decrypt(mul)
-print("재선형화 1 을 이용한 곱셈 복호화 : ", np.poly1d(dec))
+print("재선형화 1 을 이용한 곱셈 복호화 : ", np.poly1d(dec[::-1]))
 
-p = pow(2, 120)
-rlk2 = fv.generate_relinearisation_version2_key(p=p)
-mul2 = fv.multiply_use_rlk_ver2(ct1=ct1, ct2=ct2, p=p, rlk=rlk2)
-dec2 = fv.decrypt(mul2)
-print("재선형화 2 을 이용한 곱셈 복호화 : ", np.poly1d(dec2))
+# p = pow(2, 120)
+# rlk2 = fv.generate_relinearisation_version2_key(p=p)
+# mul2 = fv.multiply_use_rlk_ver2(ct1=ct1, ct2=ct2, p=p, rlk=rlk2)
+# dec2 = fv.decrypt(mul2)
+# print("재선형화 2 을 이용한 곱셈 복호화 : ", np.poly1d(dec2))
 
 
 

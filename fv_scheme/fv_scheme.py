@@ -109,7 +109,7 @@ class FV_SH(PolynomialRing):
         rlk = [rlk0_negative_add_p_mul_s_square_mod_pq, rlk1]
 
         return rlk
-
+    
     def encrypt(self, pk, m):
         """
         암호화

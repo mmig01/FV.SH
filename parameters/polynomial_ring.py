@@ -1,10 +1,13 @@
 import random
+import time
+import numpy
 import numpy as np
+from sympy import fft, ifft
 
 """
 다항식 Ring 클래스
 List 형태로 다항식을 표현
-예) f(x) = 3x^2 + 2x + 1 -> [3, 2, 1]
+예) f(x) = 3x^2 + 2x + 1 -> [1, 2, 3]
 """
 class PolynomialRing:
     def __init__(self, degree, modulus):
@@ -21,25 +24,27 @@ class PolynomialRing:
         """
         다항식을 phi(x) = x^n + 1로 나눈 나머지를 계산
         """
-        _, remainder = np.polydiv(poly, self.phi)
+        _, remainder = np.polydiv(poly[::-1], self.phi)
         result = np.array(remainder, dtype=np.object_) # 정수 제한 해제
-        return result
+        return result[::-1]
     
 
     def _ring_add(self, poly1, poly2):
         """
         다항식 덧셈
         """
-        result = np.polyadd(poly1, poly2)
-        return self._mod_phi(result)
+        result = np.polyadd(poly1[::-1], poly2[::-1])
+        return self._mod_phi(result[::-1])
 
     def _ring_multiply(self, poly1, poly2):
         """
         다항식 곱셈
         """
-        result = np.polymul(poly1, poly2)
-        return self._mod_phi(result)
+        result = np.polymul(poly1[::-1], poly2[::-1])
+        return self._mod_phi(result[::-1])
+        
     
+
     def __centered_modular(self, integer):
         """
         하나의 정수에 대한 모듈러스 연산 -> 범위 : [-modulus/2, modulus/2] 
@@ -103,4 +108,28 @@ class PolynomialRing:
         # 비밀키 생성
         coefficients = np.random.choice([-1, 0, 1], size=self.n)
         return coefficients.tolist()
+    
+    def __negacyclic_polymul_complex_twist(p1, p2):
+        """
+        FFT, IFFT 를 이용한 다항식 곱셈
+        x^n + 1 mod 한 결과가 출력
+        """
+    
+        n = p2.shape[0]
+        primitive_root = np.exp(np.pi * 1j / n)
+        root_powers = primitive_root ** np.arange(n // 2)
+        p1_preprocessed = (p1[: n // 2] + 1j * p1[n // 2 :]) * root_powers
+        p2_preprocessed = (p2[: n // 2] + 1j * p2[n // 2 :]) * root_powers
+
+        p1_ft = fft(p1_preprocessed)
+        p2_ft = fft(p2_preprocessed)
+
+        # pointwise multiplication
+        prod = p1_ft * p2_ft
+        ifft_prod = ifft(prod)
+        ifft_rotated = ifft_prod * primitive_root ** np.arange(0, -n // 2, -1)
+
+        return np.round(
+            numpy.concatenate([numpy.real(ifft_rotated), numpy.imag(ifft_rotated)])
+        ).astype(p1.dtype)
     
