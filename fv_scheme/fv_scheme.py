@@ -223,7 +223,7 @@ class FV_SH(PolynomialRing):
 
         # 시간 측정
         end_t = time.time()
-        print("재선형화 1 time: ", end_t - start_t)
+        # print("재선형화 1 time: ", end_t - start_t)
         return [c0_prime_mod_q, c1_prime_mod_q]
     
     def multiply_use_rlk_ver2(self, ct1, ct2, p, rlk):
