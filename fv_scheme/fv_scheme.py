@@ -263,12 +263,12 @@ class FV_SH(PolynomialRing):
 
         # 기저 T 를 이용하여 c2 를 분해
         c2_split = self.split_polynomial_by_T(c2 = c2, T = T)
-
         c0_prime = []
         c1_prime = []
         
+        L = math.floor(math.log(self.q, T))
         # length 개의 재선형화 키에 대해 계산
-        for i in range(len(c2_split)):
+        for i in range(L + 1):
             c0_prime = self.ring_q._ring_add(c0_prime, self.ring_q._ring_multiply(rlk[i][0], c2_split[i]))
             c1_prime = self.ring_q._ring_add(c1_prime, self.ring_q._ring_multiply(rlk[i][1], c2_split[i])) 
         
@@ -286,11 +286,22 @@ class FV_SH(PolynomialRing):
         :param c2: 다항식의 계수 리스트 
         :param T: 기저(base)
         :param q: 암호문 모듈러스
-        :return: L 개의 다항식 리스트
+        :return: L 개의 다항식 리스트 
         """
+        # length 계산 (기저 T 로 표현했을 때 최대 자리 수)
+        length = math.floor(math.log(self.q, T))
 
-        # 다시 짜야함!!
-        pass
+        # length 개의 다항식 초기화 (모든 항이 0인 다항식)
+        poly_list = [np.zeros(len(c2), dtype=int) for _ in range(length + 1)]
+
+        # 각 계수를 기저 T로 변환하여 자리별로 배치
+        for i, coeff in enumerate(c2):  # 다항식의 각 계수에 대해 반복
+            num = coeff
+            for j in range(length + 1):  # L 개의 다항식 생성
+                poly_list[j][i] = num % T  
+                num //= T  # 다음 자리 계산
+
+        return [poly.tolist() for poly in poly_list]  # 리스트 형태로 반환
     
     def relinearisation_ver2(self, multiplied_ct, p, rlk):
         """

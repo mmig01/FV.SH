@@ -12,7 +12,7 @@ from fv_scheme import fv_scheme
 
 n = pow(2, 3)
 # 평문, 암호문 모듈러스
-q = pow(2, 90)
+q = pow(17, 50)
 t = pow(17, 3)
 delta = math.floor(q / t)
 
@@ -23,7 +23,8 @@ fv = fv_scheme.FV_SH(degree=n, pt_modulus=t, ct_modulus=q)
 s = fv.secret_key
 # 공개 키
 pk = fv.generate_public_key()
-rlk = fv.generate_relinearisation_version1_key(T=2)
+T = 17
+rlk = fv.generate_relinearisation_version1_key(T=T)
 # NTT 계산
 def NTT(f, w, mod):
     # 입력값의 길이
@@ -118,7 +119,6 @@ if __name__ == "__main__":
     packed_plaintext2 = crt_pack_with_INTT(plaintext2, mod, n)
     print("첫번째 입력벡터를 벡터 -> 다항식 packing : \n", np.poly1d(packed_plaintext1[::-1]))
     print("두번째 입력벡터를 벡터 -> 다항식 packing : \n", np.poly1d(packed_plaintext2[::-1]))
-
     # 다항식 암호화
     enc_plaintext1 = fv.encrypt(pk=pk, m=packed_plaintext1)
     enc_plaintext2 = fv.encrypt(pk=pk, m=packed_plaintext2)
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     print("복구된 벡터 : ", dec_pt1)
     
     # 다항식 곱셈
-    enc_mul = fv.multiply_use_rlk_ver1(ct1=enc_plaintext1, ct2=enc_plaintext2, T=2, rlk=rlk)
+    enc_mul = fv.multiply_use_rlk_ver1(ct1=enc_plaintext1, ct2=enc_plaintext2, T=T, rlk=rlk)
     print("곱셈 결과 암호문 c'0 : \n", np.poly1d(enc_mul[0][::-1]))
     print("곱셈 결과 암호문 c'1 : \n", np.poly1d(enc_mul[1][::-1]))
     print("======= 암호화 상태로 다항식 곱셈 수행 (NTT 변환 후 NTT 곱셈 사용) =======")
