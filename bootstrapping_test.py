@@ -2,12 +2,18 @@
 import math
 import numpy as np
 from fv_scheme import fv_scheme 
-# 곱셈 시 오버플로 해결해야 함!!!
+# 기본 세팅
+# q = 2^50 : 1125899906842624
+# t = 17^3 : 4913
 
-n = pow(2, 2)
+# q' = p^e 꼴로 바꿀 때
+# 바뀐 ciphertext modulus -> 2^90 : 1152921504606846976
+# 바뀐 plaintext modulus -> 17^6 : 24137569
+
+n = pow(2, 3)
 # 평문, 암호문 모듈러스
-q = pow(2, 60)
-t = pow(17,2)
+q = pow(2, 90)
+t = pow(17, 3)
 delta = math.floor(q / t)
 
 print("q = ", q, "t = ", t, "delta = ", delta)
@@ -57,7 +63,6 @@ def get_w(n, mod):
     :param mod: 모듈러 값
     :return: 조건을 만족하는 w
     """
-
     # 1부터 mod - 1 사이의 정수 중 조건을 만족하는 w를 찾음
     for w in range(1, mod):
         if pow(w, n, mod) == mod - 1 and pow(w, 2 * n, mod) == 1:
@@ -87,23 +92,23 @@ def get_roots(n, mod):
     
     # 계수에 mod 17 하여 출력
     return [roots[i] % mod for i in range(len(roots))]
-
+    
+    
 
 
 # 예제 사용
 if __name__ == "__main__":
     
     # 입력값 벡터 m 을 설정
-
     mod = t
-    # 다항식의 근을 계산
-    roots = get_roots(n, mod)
-    slot_length = len(roots)
-    print("ψ : ", roots)
-    print("슬롯 개수 : " , slot_length)
+    # # 다항식의 근을 계산
+    # roots = get_roots(n, mod)
+    # slot_length = len(roots)
+    # print("ψ : ", roots)
+    # print("슬롯 개수 : " , slot_length)
 
-    plaintext1 = [1, 2, 3, 4]
-    plaintext2 = [5, 6, 7, 8]
+    plaintext1 = [1, 2, 3, 4, 5, 6, 7, 8]
+    plaintext2 = [5, 6, 7, 8, 9, 10, 11, 12]
 
     print("입력 벡터1 : ", plaintext1)
     print("입력 벡터2 : ", plaintext2)
@@ -117,7 +122,28 @@ if __name__ == "__main__":
     # 다항식 암호화
     enc_plaintext1 = fv.encrypt(pk=pk, m=packed_plaintext1)
     enc_plaintext2 = fv.encrypt(pk=pk, m=packed_plaintext2)
+    
+    # # 다항식의 모든 항을 2진법으로 변환한 후, 가장 하위 비트를 제거
+    # def remove_lsb(coef):
+    #     x = int(coef)
+    #     return float(math.trunc(x / 8) * 8)
 
+    # # 다항식의 계수가 담긴 리스트에 적용하는 예시:
+    # def process_polynomial_coeffs(coeff_list):
+    #     return [remove_lsb(coef) for coef in coeff_list]
+    
+
+    # # 다항식 계수에 LSB 제거
+    # enc_plaintext1 = [process_polynomial_coeffs(enc_plaintext1[0]), process_polynomial_coeffs(enc_plaintext1[1])]
+    # enc_plaintext2 = [process_polynomial_coeffs(enc_plaintext2[0]), process_polynomial_coeffs(enc_plaintext2[1])]
+    # print("int : ", enc_plaintext1)
+
+    # 다항식 덧셈
+    enc_add = fv.add(enc_plaintext1, enc_plaintext2)
+    dec_add_ciphertext = fv.decrypt(enc_add)
+    dec_pt1 = inverse_crt_pack_with_NTT(dec_add_ciphertext, mod, n)
+    print("복구된 벡터 : ", dec_pt1)
+    
     # 다항식 곱셈
     enc_mul = fv.multiply_use_rlk_ver1(ct1=enc_plaintext1, ct2=enc_plaintext2, T=2, rlk=rlk)
     print("곱셈 결과 암호문 c'0 : \n", np.poly1d(enc_mul[0][::-1]))

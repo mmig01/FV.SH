@@ -4,7 +4,7 @@ from fv_scheme import fv_scheme
 
 # cyclotomic 다항식의 차수
 # f(x) = x^n + 1
-n = pow(2, 10)
+n = pow(2, 3)
 # 평문, 암호문 모듈러스
 q = pow(2 ,70)
 t = 10000
@@ -38,9 +38,5 @@ mul = fv.multiply_use_rlk_ver1(ct1=ct1, ct2=ct2, T=T, rlk=rlk)
 dec = fv.decrypt(mul)
 print("재선형화 1 을 이용한 곱셈 복호화 : ", np.poly1d(dec[::-1]))
 
-# p = pow(2, 120)
-# rlk2 = fv.generate_relinearisation_version2_key(p=p)
-# mul2 = fv.multiply_use_rlk_ver2(ct1=ct1, ct2=ct2, p=p, rlk=rlk2)
-# dec2 = fv.decrypt(mul2)
-# print("재선형화 2 을 이용한 곱셈 복호화 : ", np.poly1d(dec2))
+
 

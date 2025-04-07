@@ -80,12 +80,12 @@ class PolynomialRing:
             while True:
                 sample = np.random.normal(loc=0, scale=sigma)  # 정규분포에서 샘플링
                 if -B <= sample <= B:  # B 범위 내 값만 허용
+                    '''
+                    단순히 int 형으로 변환 후 사용하였지만
+                    실제 사용시에는 discrete gaussian distribution 을 사용해야함
+                    '''
                     poly.append(int(round(sample)))
                     break
-
-        # # 테스트를 위해 [-3 , -2, -1, 0, 1, 2, 3] 중에서 랜덤으로 선택
-        # for _ in range(self.n):
-        #     poly.append(np.random.choice([-3, -2, -1, 0, 1, 2, 3]))
 
         return poly
     
@@ -94,11 +94,6 @@ class PolynomialRing:
         차수가 n-1 이하, 계수의 범위가 (-q/2 , q/2] 인 다항식 생성
         
         """
-        # return np.random.randint(
-        #     low=-self.modulus // 2 + 1,
-        #     high=self.modulus // 2 + 1,
-        #     size=self.n
-        # ).tolist()
         return [random.randint(-self.modulus // 2 + 1, self.modulus // 2) for _ in range(self.n)]
     def _generate_small_error(self):
         """

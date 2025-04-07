@@ -201,8 +201,6 @@ class FV_SH(PolynomialRing):
         c1 = round{t/q · (ct1[0] · ct2[1] + ct1[1] · ct2[0])} mod q
         c2 = round(t/q · ct1[1] · ct2[1]) mod q
         """
-        # 시간 측정
-        start_t = time.time()
         
         c0 = self.ring_q._ring_multiply(ct1[0], ct2[0])
         c0 = [coef * (self.t / self.q) for coef in c0]
@@ -220,10 +218,6 @@ class FV_SH(PolynomialRing):
         재선형화 버전 1
         """
         c0_prime_mod_q, c1_prime_mod_q = self.relinearisation_ver1(multiplied_ct=[c0, c1, c2], T=T, rlk=rlk)
-
-        # 시간 측정
-        end_t = time.time()
-        # print("재선형화 1 time: ", end_t - start_t)
         return [c0_prime_mod_q, c1_prime_mod_q]
     
     def multiply_use_rlk_ver2(self, ct1, ct2, p, rlk):
@@ -238,9 +232,6 @@ class FV_SH(PolynomialRing):
         c1 = round{t/q · (ct1[0] · ct2[1] + ct1[1] · ct2[0])} mod q
         c2 = round(t/q · ct1[1] · ct2[1]) mod q
         """
-
-        # 시간 측정
-        start_t = time.time()
 
         c0 = self.ring_q._ring_multiply(ct1[0], ct2[0])
         c0 = [coef * (self.t / self.q) for coef in c0]
@@ -260,9 +251,6 @@ class FV_SH(PolynomialRing):
         """
         c0_prime_mod_q, c1_prime_mod_q = self.relinearisation_ver2(multiplied_ct=[c0, c1, c2], p=p, rlk=rlk)
 
-        # 시간 측정
-        end_t = time.time()
-        print("재선형화 2 time: ", end_t - start_t)
         return [c0_prime_mod_q, c1_prime_mod_q]
     
     def relinearisation_ver1(self, multiplied_ct, T, rlk):
@@ -294,38 +282,15 @@ class FV_SH(PolynomialRing):
     def split_polynomial_by_T(self, c2, T):
         """
         다항식의 각 계수를 기저 T 로 분해하여 L 개의 다항식 리스트를 생성
-        (출력 시 높은 차수부터 낮은 차수 순서로 유지)
         
-        :param c2: 다항식의 계수 리스트 (높은 차수부터 낮은 차수 순서)
+        :param c2: 다항식의 계수 리스트 
         :param T: 기저(base)
         :param q: 암호문 모듈러스
-        :return: L 개의 다항식 리스트 (높은 자리부터 낮은 자리 순서)
+        :return: L 개의 다항식 리스트
         """
-        # length 계산 (기저 T 로 표현했을 때 최대 자리 수)
-        length = math.floor(math.log(self.q, T))
 
-        # length 개의 다항식 초기화 (모든 항이 0인 다항식)
-        poly_list = [np.zeros(len(c2), dtype=int) for _ in range(length + 1)]
-
-        """
-        3x^2 + 4x + 5 = [3, 4, 5] 이고 T = 2 일 때
-        poly_list[][0] = [1, 0, 0] ( * 2^0)   +
-        poly_list[][1] = [1, 0, 1] ( * 2^1)   +
-        poly_list[][2] = [0, 1, 1] ( * 2^2)   +
-        poly_list[][3] = [0, 0, 0] ( * 2^3)   =
-        ----------------------------------------
-                        [3, 4, 5]
-        ...
-        과 같이 변환
-        """
-        # 각 계수를 기저 T로 변환하여 자리별로 배치
-        for i, coeff in enumerate(c2):  # 다항식의 각 계수에 대해 반복
-            num = coeff
-            for j in range(length + 1):  # L 개의 다항식 생성
-                poly_list[j][i] = num % T  
-                num //= T  # 다음 자리 계산
-
-        return [poly.tolist() for poly in poly_list]  # 리스트 형태로 반환
+        # 다시 짜야함!!
+        pass
     
     def relinearisation_ver2(self, multiplied_ct, p, rlk):
         """
