@@ -13,8 +13,9 @@ class FV_SH(PolynomialRing):
         ring_t : 평문 다항식 Ring
         ring_q : 암호문 다항식 Ring
         delta : q/t 의 버림 값
-        param_generator : 파라미터 생성기(다항식 생성, 작은 에러 다항식 생성)
         secret_key : 비밀키
+        public_key : 공개키
+        relinearisation_key : 재선형화 키
         """
         self.n = degree
         self.t = pt_modulus
@@ -23,7 +24,9 @@ class FV_SH(PolynomialRing):
         self.ring_q = PolynomialRing(degree=degree, modulus=ct_modulus)
         self.delta = math.floor(ct_modulus / pt_modulus)
         self.secret_key = self.ring_q._generate_small_error()
-    
+        self.public_key = self.generate_public_key()
+        self.relinearisation_key = None
+
     def generate_public_key(self):
         """
         공개키 생성

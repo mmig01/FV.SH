@@ -7,7 +7,7 @@ from fv_scheme import fv_scheme
 n = pow(2, 2)
 # 평문, 암호문 모듈러스
 q = pow(2, 60)
-t = pow(17,2)
+t = pow(17,4)
 delta = math.floor(q / t)
 
 print("q = ", q, "t = ", t, "delta = ", delta)
