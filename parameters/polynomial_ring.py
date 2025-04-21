@@ -104,27 +104,4 @@ class PolynomialRing:
         coefficients = np.random.choice([-1, 0, 1], size=self.n)
         return coefficients.tolist()
     
-    def __negacyclic_polymul_complex_twist(p1, p2):
-        """
-        FFT, IFFT 를 이용한 다항식 곱셈
-        x^n + 1 mod 한 결과가 출력
-        """
-    
-        n = p2.shape[0]
-        primitive_root = np.exp(np.pi * 1j / n)
-        root_powers = primitive_root ** np.arange(n // 2)
-        p1_preprocessed = (p1[: n // 2] + 1j * p1[n // 2 :]) * root_powers
-        p2_preprocessed = (p2[: n // 2] + 1j * p2[n // 2 :]) * root_powers
-
-        p1_ft = fft(p1_preprocessed)
-        p2_ft = fft(p2_preprocessed)
-
-        # pointwise multiplication
-        prod = p1_ft * p2_ft
-        ifft_prod = ifft(prod)
-        ifft_rotated = ifft_prod * primitive_root ** np.arange(0, -n // 2, -1)
-
-        return np.round(
-            numpy.concatenate([numpy.real(ifft_rotated), numpy.imag(ifft_rotated)])
-        ).astype(p1.dtype)
     
