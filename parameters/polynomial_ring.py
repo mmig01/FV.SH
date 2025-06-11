@@ -86,7 +86,6 @@ class PolynomialRing:
                     '''
                     poly.append(int(round(sample)))
                     break
-
         return poly
     
     def _generate_polynomial(self):

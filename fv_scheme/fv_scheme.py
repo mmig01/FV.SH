@@ -12,7 +12,6 @@ class FV_SH(PolynomialRing):
         q : 암호문 모듈러스
         ring_t : 평문 다항식 Ring
         ring_q : 암호문 다항식 Ring
-        delta : q/t 의 버림 값
         secret_key : 비밀키
         public_key : 공개키
         relinearisation_key : 재선형화 키
@@ -22,7 +21,6 @@ class FV_SH(PolynomialRing):
         self.q = ct_modulus
         self.ring_t = PolynomialRing(degree=degree, modulus=pt_modulus)
         self.ring_q = PolynomialRing(degree=degree, modulus=ct_modulus)
-        self.delta = math.floor(ct_modulus / pt_modulus)
         self.secret_key = self.ring_q._generate_small_error()
         self.public_key = self.generate_public_key()
         self.relinearisation_key = None
@@ -129,7 +127,7 @@ class FV_SH(PolynomialRing):
         """
         ∆·m 부분
         """
-        delta_mul_m = [coef * self.delta for coef in m]
+        delta_mul_m = [coef * (math.floor(self.q / self.t)) for coef in m]
         """
         c0 = p0·u + e1 + ∆·m mod q, c1 = p1·u + e2 mod q
         """

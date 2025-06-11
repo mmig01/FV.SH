@@ -11,19 +11,21 @@ n = pow(2, 0)
 p = 2
 e = 20
 q = pow(p, e)
-r = 7
+r = 5
 t = pow(p, r)
-T = 2
+T = 16
 
 Q = pow(2, 100)
 
 fv_mod_q = fv_scheme.FV_SH(degree=n, pt_modulus=t, ct_modulus=q)
-fv_mod_q.relinearisation_key = fv_mod_q.generate_relinearisation_version1_key(T=2)
+fv_mod_q.relinearisation_key = fv_mod_q.generate_relinearisation_version1_key(T=T)
 
 def create_ring(q, t):
 
     fv = fv_scheme.FV_SH(degree=n, pt_modulus=t, ct_modulus=q)
-    fv.relinearisation_key = fv.generate_relinearisation_version1_key(T=2)
+    fv.public_key = fv_mod_q.public_key
+    fv.secret_key = fv_mod_q.secret_key
+    fv.relinearisation_key = fv.generate_relinearisation_version1_key(T=T)
     return fv
 
 
@@ -70,10 +72,14 @@ def digit_extraction(ciphertext1, e, p):
     for j in range(e + 1):
         ring = create_ring(q=Q, t=pow(p, e - j))
         rings.append(ring)
+
     for k in range(e):
         y = ciphertext1
         for j in range(k + 1):
-            w[j][k + 1] = rings[j].multiply_use_rlk_ver1(ct1=w[j][k], ct2=w[j][k], T=2, rlk=rings[j].relinearisation_key)
+            w[j][k + 1] = rings[j].multiply_use_rlk_ver1(ct1=w[j][k], ct2=w[j][k], T=T, rlk=rings[j].relinearisation_key)
+            # 트릭!! 테스트를 위해 복호화 후 다시 암호화
+            dec_res = rings[j].decrypt(w[j][k + 1])
+            w[j][k + 1] = rings[j].encrypt(pk=rings[j].public_key, m=dec_res)
             # w 계수에 음수 처리
             inverse_w1 = [coef * -1 for coef in w[j][k + 1][0]]
             inverse_w2 = [coef * -1 for coef in w[j][k + 1][1]]
@@ -84,14 +90,8 @@ def digit_extraction(ciphertext1, e, p):
     return w
 
 def digit_remove(ciphertext1, p, e, v):
-    rings = []  
-    for j in range(e + 1):
-        ring = create_ring(q=Q, t=pow(p, e - j))
-        rings.append(ring)
 
     w = digit_extraction(ciphertext1, e, p)
-  
-            
     ring = create_ring(q=Q, t=pow(p, e))
     remove_digit_v = ciphertext1
     for i in range(v):
@@ -127,7 +127,7 @@ def bootstrapping(ciphertext1):
     # 같은 secret key 사용
     fv_mod_q_prime.secret_key = fv_mod_q.secret_key
     # 같은 재선형화 키 사용
-    fv_mod_q_prime.relinearisation_key = fv_mod_q_prime.generate_relinearisation_version1_key(T=2)
+    fv_mod_q_prime.relinearisation_key = fv_mod_q_prime.generate_relinearisation_version1_key(T=T)
 
     ciphertext_modulus_switched = modulus_switching(ciphertext1, q, q_prime)
 
@@ -141,7 +141,7 @@ def bootstrapping(ciphertext1):
     # 같은 sk 사용
     fv_mod_Q.public_key = fv_mod_q.public_key
     fv_mod_Q.secret_key = fv_mod_q.secret_key
-    fv_mod_Q.relinearisation_key = fv_mod_Q.generate_relinearisation_version1_key(T=2)
+    fv_mod_Q.relinearisation_key = fv_mod_Q.generate_relinearisation_version1_key(T=T)
 
     delta = math.floor(q / t)
     print("q = ", q, "t = ", t, "delta = ", delta)
