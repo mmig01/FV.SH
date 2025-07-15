@@ -6,8 +6,8 @@ from fv_scheme import fv_scheme
 
 n = pow(2, 2)
 # 평문, 암호문 모듈러스
-q = pow(2, 60)
-t = pow(17,4)
+q = pow(2, 30)
+t = pow(17,2)
 delta = math.floor(q / t)
 
 print("q = ", q, "t = ", t, "delta = ", delta)
@@ -87,7 +87,8 @@ def get_roots(n, mod):
     
     # 계수에 mod 17 하여 출력
     return [roots[i] % mod for i in range(len(roots))]
-
+    
+    
 
 
 # 예제 사용
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     # 다항식 암호화
     enc_plaintext1 = fv.encrypt(pk=pk, m=packed_plaintext1)
     enc_plaintext2 = fv.encrypt(pk=pk, m=packed_plaintext2)
-
+    
     # 다항식 곱셈
     enc_mul = fv.multiply_use_rlk_ver1(ct1=enc_plaintext1, ct2=enc_plaintext2, T=2, rlk=rlk)
     print("곱셈 결과 암호문 c'0 : \n", np.poly1d(enc_mul[0][::-1]))
@@ -132,7 +133,85 @@ if __name__ == "__main__":
     print("복구된 벡터 : ", mul_result_of_packed_plaintext)
     
     
+    # # root 개의 슬롯만큼 m, m2 생성
+    # m = [random.randint(1, mod - 1) for _ in range(slot_length)]
+    # print("m : ", m)
+    
+    # m2 = [random.randint(1, mod - 1) for _ in range(slot_length)]
+    # print("m2 : ", m2)
    
+    # # CRT Packing 을 계산
+    # # m_crt_pack = crt_pack (roots, m, mod) //라그랑주 보간법 버전
+    # m_crt_pack = crt_pack_with_NTT(m, mod, n)
+    # print("CRT Packing1 : ", np.poly1d(m_crt_pack))
+
+    # # numpy 사용하여 다항식에 근 대입 //라그랑주 보간법 버전
+    # res = []
+    # for i in range(len(roots)):
+    #     res.append(int(np.polyval(m_crt_pack[::-1], roots[i]) % mod))
+    # print("m 의 값 복구 : " , res)
+
+    # inv_m_crt_pack = inverse_crt_pack_with_NTT(m_crt_pack, mod, n)
+    # print("Inverse CRT Packing1 : ", inv_m_crt_pack)
+
+    # # m2_crt_pack = crt_pack(roots, m2, mod) //라그랑주 보간법 버전
+    # m2_crt_pack = crt_pack_with_NTT(m2, mod, n)
+    # print("CRT Packing2 : ", np.poly1d(m2_crt_pack))
+    
+    # # numpy 사용하여 다항식에 근 대입 //라그랑주 보간법 버전
+    # res = []
+    # for i in range(len(roots)):
+    #     res.append(int(np.polyval(m2_crt_pack[::-1], roots[i]) % mod))
+    # print("m2 의 값 복구 : " , res)
+
+    # inv_m2_crt_pack = inverse_crt_pack_with_NTT(m2_crt_pack, mod, n)
+    # print("Inverse CRT Packing2 : ", inv_m2_crt_pack)
+
+    # print("\n\n=============== 2. m, m2 곱셈 테스트 ================")
+    # # 1. 단순 다항식 곱셈
+    # start_t = time.time()
+    # # f = x^n + 1 생성
+    # f = [1] + [0] * (n - 1) + [1]
+
+    # # CRT Packing1 * CRT Packing2 계산
+    # m_crt_mul_m2_crt = [0] * (2 * n - 1)
+    
+    # for i in range(len(m_crt_pack)):
+    #     for j in range(len(m2_crt_pack)):
+    #         m_crt_mul_m2_crt[i + j] += m_crt_pack[i] * m2_crt_pack[j]
+    #         m_crt_mul_m2_crt[i + j] %= mod
+    # # f = x^n + 1 로 mod 연산
+    # _, remainder = np.polydiv(m_crt_mul_m2_crt[::-1], f[::-1])
+    # # 오름차순으로 변경
+    # m_crt_mul_m2_crt = remainder[::-1]
+
+    # print("CRT Packing1 * CRT Packing2 : ", np.poly1d(m_crt_mul_m2_crt[::-1]))
+    # print(f"단순 곱셈 Time :  {(time.time() - start_t):.6f}")
+
+    # # numpy 사용하여 다항식에 근 대입
+    # res = []
+    # for i in range(len(roots)):
+    #     res.append(int(np.polyval(m_crt_mul_m2_crt[::-1], roots[i]) % mod))
+    # print("CRT Packing1 * CRT Packing2 의 값 복구 : " , res)
+
+    # # 2. NTT 를 이용한 곱셈
+    # # w 값을 계산
+    # start_t = time.time()
+
+    # w = get_w(n, mod)
+    # # NTT 계산
+    # F = NTT(m_crt_pack, w, mod)
+    # G = NTT(m2_crt_pack, w, mod)
+    # H = np.mod(np.multiply(F, G), mod)
+    # # INTT 계산
+    # h = INTT(H, w, mod)
+    # print("CRT Packing1 * CRT Packing2 with NTT: ", np.poly1d(h[::-1]))
+    # print(f"NTT 곱셈 Time :  {(time.time() - start_t):.6f}")
+    # # numpy 사용하여 다항식에 근 대입
+    # res = []
+    # for i in range(len(roots)):
+    #     res.append(int(np.polyval(h[::-1], roots[i]) % mod))
+    # print("CRT Packing1 * CRT Packing2 with NTT 의 값 복구 : " , res)
    
     
    
